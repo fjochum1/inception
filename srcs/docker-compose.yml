@@ -1,0 +1,76 @@
+services:
+#Nom du service utilisé
+  nginx:
+    container_name: nginx
+    #specifie le docker image utilisé, dans ce cas ci c'est l'image official Nginx de Docker hub
+    image: nginx
+    #Nom du volume: suivit de sont path
+    volumes:
+      - wordpress:/var/www/html/wordpress
+    networks:
+      - inception
+    #Specifie que se service dépend d'un autre service nommé wordpress
+    depends_on:
+      - wordpress
+    #Specifie qu'un .env existe pour donné les variables d'environement au container
+    env_file:
+      - .env
+    #Cette section est utilisée quand tu veux créer une image custome d'un docker pour lui donner le PATH ainsi que les arguments nécessaire a ca création
+    build:
+      context: ./requirements/nginx/
+    #Donne les ports de communication entre l'utilisateur et le container pour permetre au trafic de s'effectuer
+    ports:
+      - "443:443"
+    #Specifie quand le container doit restart, dans ce cas si c'est quand le container fail il est automatiquement restart
+    restart: on-failure
+
+  wordpress:
+    container_name: wordpress
+    image: wordpress
+    build: ./requirements/wordpress/
+    env_file: .env
+    volumes:
+      - wordpress:/var/www/html/wordpress
+    networks:
+      - inception
+    depends_on:
+      - mariadb
+    #Specifie le port du container sans le publié a l'utilisateur
+    expose:
+      - "9000"
+    restart: on-failure
+
+  mariadb:
+    container_name: mariadb
+    image: mariadb
+    build: ./requirements/mariadb/
+    env_file: .env
+    volumes:
+      - mariadb:/var/lib/mysql
+    networks:
+      - inception
+    expose:
+      - "3306"
+    restart: on-failure
+
+volumes:
+  wordpress:
+    name: wordpress
+    driver: local
+    driver_opts:
+      type: 'none'
+      o: bind
+      device: "${VOLUME_PATH}/wordpress"
+
+  mariadb:
+    name: mariadb
+    driver: local
+    driver_opts:
+      type: 'none'
+      o: bind
+      device: "${VOLUME_PATH}/mariadb"
+
+networks:
+  inception:
+    #Specifie quel driver est utilisé pour le network, dans ce cas ci c'est le driver par defaut pour le Docker Network.
+    driver: bridge
